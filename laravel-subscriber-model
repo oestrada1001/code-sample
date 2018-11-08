@@ -1,0 +1,43 @@
+<?php
+
+namespace App;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use App\User;
+use App\Mail\ConfirmSubscription;
+
+class Subscriber extends Model
+{
+    //
+	protected $fillable =  ['email', 'remember_token'];
+
+    protected static function subscribeUser($data){
+
+    	$checkEmail = DB::table('subscribers')->where('email', '=', $data['subscriber_email'])->get();
+
+    	if(json_decode($checkEmail) == null){
+
+    		$subscriber = $data['subscriber_email'];
+
+	    	$result = static::create([
+	    		'email' => $subscriber,
+	    		'remember_token' => User::randomHash()
+	    	]);
+
+	    	$subscription = static::where('email', $subscriber)->first();
+
+	    	$subscription = $subscription->attributes;
+	    	
+        
+	    	\Mail::to($subscription['email'])->send(new ConfirmSubscription($subscription));
+
+	    	return $result;
+    	}
+
+    	if($checkEmail[0]->active == 1){
+			    return false;
+    	}
+
+    }
+}
