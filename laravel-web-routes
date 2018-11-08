@@ -1,0 +1,93 @@
+<?php
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| contains the "web" middleware group. Now create something great!
+|
+*/
+
+use Illuminate\Support\Facades\Auth;
+
+//Public Pages
+Route::get('/', 'GeoLocationController@index');
+Route::get('/map-it-out', 'GeoLocationController@map');
+Route::post('/map-it-out', 'GeoLocationController@homelessReport');//
+Route::get('/thank-you', 'GeoLocationController@thankYou');
+Route::post('/', 'GeoLocationController@contactUs')->name('contact-us');
+Route::get('/terms-and-conditions', 'GeoLocationController@terms')->name('terms-and-conditions');
+
+Route::get('/success', 'GeoLocationController@successPage')->name('success-page');
+Route::get('/error', 'GeoLocationController@errorPage')->name('error-page');
+
+
+Route::post('/subscribe-user', 'SubscriptionController@subscribeUser')->name('subscribe-user');
+Route::get('confirm-subscription/{hash}', 'SubscriptionController@confirmSubscription')->name('confirm-subscription');
+
+//Still need to add that module to dynamically add to template
+//Still need to create method
+Route::get('/unsubscribe-user/{hash}', 'SubscriptionController@unsubscribeUser')->name('unsubscribe-user');
+
+//Make Method on GeoLocationController
+// Route::get('/account-deactivated', 'GeoLocationController@accountDeactivated')->name('account-deactivated');
+
+
+
+
+//Register Special Link
+Route::get('organization/{id}/{hash}', 'RegisterBusinessController@retrieveRegistration')->name('show-registration');
+Route::post('organization/{id}/{hash}', 'RegisterBusinessController@completeRegistration')->name('finish-registration');//
+Route::get('user/{id}/{hash}', 'UserController@showUserForm')->name('show-user-form');
+Route::post('user/{id}/{hash}', 'UserController@registerUser')->name('register-user');//
+
+
+
+
+
+//Login | Remove Register Links
+Auth::routes();
+Route::get('/reports', 'HomeController@index')->name('home');
+
+
+//Group Middleware User == basic == employees
+Route::group(['middleware' => ['auth']], function(){
+	Route::get('/user-profile', 'UserController@userProfile')->name('user-profile');
+	Route::post('/user-profile', 'UserController@store')->name('user-profile');
+	Route::get('/reports', 'UserController@index')->name('reports');
+	Route::get('/map', 'UserController@map')->name('map');
+	Route::post('/logout', 'Auth\LoginController@logout')->name('logout');
+	Route::post('/download-report', 'UserController@saveDownload')->name('download-reports');//
+	Route::post('/get-directions', 'UserController@getDirections')->name('get-directions');//
+});
+
+//Group Middleware Admin 
+Route::group(['middleware' => ['auth', 'admin']], function(){
+	Route::get('/dashboard', 'AdminController@index')->name('dashboard');
+	Route::get('/all-users', 'AdminController@allUsers')->name('all-users');
+	Route::get('/all-organizations', 'AdminController@allOrganizations')->name('all-organizations');
+	Route::get('/register-business', 'RegisterBusinessController@create')->name('register-business');
+	Route::post('/register-business', 'RegisterBusinessController@store')->name('post-register-business');//
+	Route::post('/send-manager-link', 'AdminController@sendManagerLink')->name('send-manager-link');//
+	Route::post('/update-user-limit', 'AdminController@updateUserLimit')->name('update-user-limit');//
+	Route::post('/update-status', 'AdminController@updateUserStatus')->name('admin-update-user-status');//
+	Route::post('/update-user-access', 'AdminController@updateUserAccess')->name('update-user-access');//
+	Route::post('/deactivate-organization-account', 'AdminController@deactivateAccount')->name('deactivate-organization-account');
+});
+
+
+
+//Group Middleware Manager
+Route::group(['middleware' => ['auth', 'manager']], function(){
+	Route::get('/organization-users', 'ManagerController@organizationUsers')->name('organization-users');
+	Route::get('/organization-account', 'ManagerController@organizationAccount')->name('organization-account');
+
+	//updateOrganization Account not made
+	Route::post('/organization-account', 'ManagerController@updateOrganizationAccount')->name('update-organization-account');
+	//^Deadend link 
+
+	Route::post('/manager-update-status', 'ManagerController@updateUserStatus')->name('manager-update-user-status'); //
+});
