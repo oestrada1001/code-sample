@@ -1,0 +1,105 @@
+<?php
+
+namespace App;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use App\Business;
+use App\User;
+use Carbon\Carbon;
+
+class Download extends Model
+{
+    //
+    public $guarded = [];
+    
+    //Declares the downloads table does not contain timestamp columns
+    public $timestamps = false;
+
+
+    protected static function createDownloadReport($user, $ID_array, $page_url)
+    {
+    	$implode_array = implode('-', $ID_array);
+    	$timeDate = Carbon::now();
+  
+    	static::create([
+    		'business_id' => $user->business_id,
+    		'user_id' => $user->id,
+    		'report_ids' => $implode_array,
+    		'page_url' => $page_url,
+    		'used_on' =>  $timeDate
+    	]);
+    }
+
+    protected static function downloadCSV($file)
+    {
+
+		if (file_exists($file)) {
+    		header('Content-Description: File Transfer');
+    		header('Content-Type: application/octet-stream');
+    		header('Content-Disposition: attachment; filename="'.basename($file).'"');
+    		header('Expires: 0');
+    		header('Cache-Control: must-revalidate');
+    		header('Pragma: public');
+    		header('Content-Length: ' . filesize($file));
+    		readfile($file);
+    		exit;
+		}
+    }
+    
+    protected static function checkDirectory($path)
+    {
+        if(!file_exists($path)){
+            mkdir($path, true);
+        }
+        
+    }
+
+    protected static function createCSV($user)
+    {
+        $path = storage_path('downloads').'/'.$user->business_id.'/';
+        
+        //Creates a datetime and formats it properly
+        $dateTime = (string)Carbon::now();
+        $dateTime = str_replace(' ','_',$dateTime);
+        $dateTime = str_replace(':', '-', $dateTime);
+
+        $fileName = $user->id.'_reports_'.$dateTime.'.csv';
+
+        static::checkDirectory($path);
+        
+        $CSV = touch($path.$fileName);
+        
+        return $file = $path.$fileName;
+    }
+
+    protected static function saveCsvData($fileName, $reportArray)
+    {
+        $fileOpened = fopen($fileName, 'w');
+        
+        //Turns Query result to array
+        $reportArray = json_decode($reportArray);
+        
+        //Creates array with column names 
+        $reportHeader = array_keys((array)$reportArray[0]);
+        
+        //Adds Column's array to reports for a csv header.
+        array_unshift($reportArray, $reportHeader);
+
+        foreach($reportArray as $report){
+            $report = (array)$report;
+            fputcsv($fileOpened, $report);
+        }
+        return fclose($fileOpened);
+    }
+
+    public function business()
+    {
+    	return $this->belongsTo(Business::class, 'business_id');
+    }
+
+    public function user()
+    {
+    	return $this->belongsTo(User::class, 'user_id');
+    }
+}
